@@ -1,0 +1,18 @@
+Beams:idA = 2212
+Beams:idB = 2212
+Beams:eCM = 13000
+
+WeakSingleBoson:ffbar2gmZ = on   # Enable Z/gamma* production channel
+23:onMode = off
+23:onIfMatch = 15 -15            # Z -> tau+ tau-
+
+15:offIfAny = 11 13              # Disable all tau decays to leptons
+
+Main:timesAllowErrors = 10000
+Random:seed = 84
+Main:numberOfEvents = 1000000
+Main:writeHepMC = on
+
+# Enable Rivet Analysis
+Main:runRivet = off
+Main:rivetAnalyses = DITAU_Z_CSV

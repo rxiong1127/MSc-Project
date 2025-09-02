@@ -1,0 +1,18 @@
+Beams:idA = 2212
+Beams:idB = 2212
+Beams:eCM = 13000
+
+HiggsSM:gg2H = on         # Gluon fusion production
+25:onMode = off           # Turn off all Higgs decays
+25:onIfMatch = 15 -15     # Enable only H -> tau+ tau-
+
+15:offIfAny = 11 13       # Disable all tau decays to leptons
+
+Main:timesAllowErrors = 10000
+Random:seed = 42
+Main:numberOfEvents = 265000
+Main:writeHepMC = on
+
+# Enbale Rivet Analysis
+Main:runRivet = off
+Main:rivetAnalyses = DITAU_Z_CSV

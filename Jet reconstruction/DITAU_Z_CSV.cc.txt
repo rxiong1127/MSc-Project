@@ -1,0 +1,103 @@
+#include "Rivet/Analysis.hh"
+#include "Rivet/Projections/FastJets.hh"
+#include "Rivet/Projections/FinalState.hh"
+#include <fstream>
+#include <random>  // for Gaussian sampling
+
+namespace Rivet {
+
+  class DITAU_Z_CSV : public Analysis {
+  public:
+
+    DITAU_Z_CSV() : Analysis("DITAU_Z_CSV") {}
+
+    void init() {
+
+      // Define the full final state
+      const FinalState fs(Cuts::abseta < 4.9);
+      declare(fs, "Particles");
+
+      // Define anti-kt jets with R=0.4
+      FastJets jetfs(fs, JetAlg::ANTIKT, 0.4, JetMuons::NONE, JetInvisibles::NONE);
+      declare(jetfs, "Jets");
+
+      // Open CSV file and write header
+      string outfile = getOption<string>("OUTFILE", "ditau_events_z.csv");
+      _out.open(outfile);
+      _out << "event,pt1,eta1,phi1,mass1,pt2,eta2,phi2,mass2,delta_eta,delta_phi,delta_R,m_tautau,pt_tautau,eta_tautau,z\n";
+    }
+
+    void analyze(const Event& event) {
+
+      ++_eventCounter;
+      long evtNum = _eventCounter;
+
+      Jets jets = apply<FastJets>(event, "Jets").jetsByPt(Cuts::pT > 20*GeV);
+
+      if (jets.size() != 2) vetoEvent;
+
+      // Generate a random Gaussian nuisance z ~ N(0,1)
+      double z = _gauss(_rng); // z sampled from N(0,1)
+      double R = 0.1;          // Resolution factor
+      double scale = 1.0 + z * R;
+
+      // Apply scaling to both jets' four-momentum
+      FourMomentum p1 = jets[0].momentum() * scale;
+      FourMomentum p2 = jets[1].momentum() * scale;
+
+      // Reconstruct jets with scaled momentum
+      Jet tau1(p1);
+      Jet tau2(p2);
+
+      // Calculate angular separations
+      const double dEta = fabs(tau1.eta() - tau2.eta());
+      const double dPhi = deltaPhi(tau1.phi(), tau2.phi());
+      const double dR = deltaR(tau1, tau2);
+
+      // Di-tau system
+      FourMomentum pTT = tau1.momentum() + tau2.momentum();
+
+      // Write scaled features and z to CSV
+      writeField(_out, evtNum);
+      writeField(_out, tau1.pT()/GeV);
+      writeField(_out, tau1.eta());
+      writeField(_out, tau1.phi());
+      writeField(_out, tau1.mass()/GeV);
+      writeField(_out, tau2.pT()/GeV);
+      writeField(_out, tau2.eta());
+      writeField(_out, tau2.phi());
+      writeField(_out, tau2.mass()/GeV);
+      writeField(_out, dEta);
+      writeField(_out, dPhi);
+      writeField(_out, dR);
+      writeField(_out, pTT.mass()/GeV);
+      writeField(_out, pTT.pT()/GeV);
+      writeField(_out, pTT.eta());
+      writeField(_out, z, true); // z is the last column
+    }
+
+    void finalize() {
+      _out.close();
+    }
+
+  private:
+
+    std::ofstream _out;
+    size_t _eventCounter = 0;
+
+    // Gaussian random generator setup
+    std::default_random_engine _rng{std::random_device{}()};
+    std::normal_distribution<double> _gauss{0.0, 1.0}; // mean=0, std=1
+
+    // Helper function to write CSV field
+    template <typename T>
+    void writeField(std::ostream& out, const T& val, bool last=false) {
+      out << val;
+      if (!last) out << ",";
+      else out << "\n";
+    }
+  };
+
+  RIVET_DECLARE_PLUGIN(DITAU_Z_CSV);
+
+} // namespace Rivet
